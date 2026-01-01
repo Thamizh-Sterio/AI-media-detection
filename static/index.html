@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Media Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 25px;
+            font-size: 0.85em;
+            color: #856404;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.drag-over {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-info {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-info.show {
+            display: flex;
+        }
+
+        .file-name {
+            color: #2e7d32;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .clear-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .clear-btn:hover {
+            background: #d32f2f;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            animation: slideIn 0.5s ease;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results.ai-detected {
+            background: #ffebee;
+            border: 2px solid #f44336;
+        }
+
+        .results.human-created {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+        }
+
+        .result-header {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-icon {
+            font-size: 1.2em;
+        }
+
+        .ai-detected .result-header {
+            color: #c62828;
+        }
+
+        .human-created .result-header {
+            color: #2e7d32;
+        }
+
+        .confidence {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .explanation {
+            color: #555;
+            line-height: 1.6;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .frames-count {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .upload-area {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 AI Media Detection</h1>
+        <p class="subtitle">Upload an image or video to detect AI-generated content</p>
+
+        <div class="disclaimer">
+            <strong>⚠️ Disclaimer:</strong> This detection system is approximately 80% accurate and should not be considered foolproof. Results are probabilistic and for informational purposes only.
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drag & drop your file here</div>
+            <div class="upload-subtext">or click to browse</div>
+            <div class="upload-subtext" style="margin-top: 10px;">Supports: JPG, PNG, WEBP, MP4, MOV</div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/quicktime,video/x-msvideo">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <span class="file-name" id="fileName"></span>
+            <button class="clear-btn" id="clearBtn">Clear</button>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Media</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Analyzing media... This may take a moment.</div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-header">
+                <span class="result-icon" id="resultIcon"></span>
+                <span id="resultTitle"></span>
+            </div>
+            <div class="confidence" id="confidence"></div>
+            <div class="explanation" id="explanation"></div>
+            <div class="frames-count" id="framesCount"></div>
+        </div>
+
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const clearBtn = document.getElementById('clearBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorDiv = document.getElementById('error');
+
+        let selectedFile = null;
+
+        // Click to browse
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            handleFileSelect(e.dataTransfer.files[0]);
+        });
+
+        // Clear file
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearFile();
+        });
+
+        // Analyze button
+        analyzeBtn.addEventListener('click', analyzeMedia);
+
+        function handleFileSelect(file) {
+            if (!file) return;
+
+            // Validate file type
+            const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            const validVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+            const validTypes = [...validImageTypes, ...validVideoTypes];
+
+            if (!validTypes.includes(file.type)) {
+                showError('Invalid file type. Please upload an image (JPG, PNG, WEBP) or video (MP4, MOV).');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileInfo.classList.add('show');
+            analyzeBtn.disabled = false;
+            hideError();
+            hideResults();
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            analyzeBtn.disabled = true;
+            hideResults();
+            hideError();
+        }
+
+        async function analyzeMedia() {
+            if (!selectedFile) return;
+
+            // Determine endpoint based on file type
+            const isVideo = selectedFile.type.startsWith('video/');
+            const endpoint = isVideo ? '/detect-video' : '/detect-image';
+
+            // Show loading state
+            analyzeBtn.disabled = true;
+            loading.classList.add('show');
+            hideResults();
+            hideError();
+
+            try {
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                // Send request
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Analysis failed');
+                }
+
+                const result = await response.json();
+                displayResults(result);
+
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            } finally {
+                loading.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            const { is_ai_generated, confidence, explanation, frames_analyzed } = data;
+
+            // Set result class
+            results.className = 'results show';
+            if (is_ai_generated) {
+                results.classList.add('ai-detected');
+                document.getElementById('resultIcon').textContent = '🤖';
+                document.getElementById('resultTitle').textContent = 'AI-Generated Content Detected';
+            } else {
+                results.classList.add('human-created');
+                document.getElementById('resultIcon').textContent = '✅';
+                document.getElementById('resultTitle').textContent = 'Likely Human-Created';
+            }
+
+            // Display confidence
+            const confidencePercent = Math.round(confidence * 100);
+            document.getElementById('confidence').textContent = `Confidence: ${confidencePercent}%`;
+
+            // Display explanation
+            document.getElementById('explanation').textContent = explanation;
+
+            // Display frames count if video
+            const framesCount = document.getElementById('framesCount');
+            if (frames_analyzed) {
+                framesCount.textContent = `Video analysis: ${frames_analyzed} frames analyzed`;
+                framesCount.style.display = 'block';
+            } else {
+                framesCount.style.display = 'none';
+            }
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            errorDiv.classList.remove('show');
+        }
+
+        function hideResults() {
+            results.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
